@@ -1,13 +1,20 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import { validateContactForm, sendContactEmail } from "../src/server/contactHandler.js";
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-  { auth: { persistSession: false } }
-);
+// Lazy Supabase client — only created when actually needed (avoids crash on local dev)
+let _supabase: SupabaseClient | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    if (url && key) {
+      _supabase = createClient(url, key, { auth: { persistSession: false } });
+    }
+  }
+  return _supabase;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Content-Type", "application/json");
@@ -28,16 +35,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Persist message to Supabase (non-blocking)
     try {
-      const ip = (req.headers["x-forwarded-for"] as string || "").split(",")[0] || "unknown";
-      await supabase.from("contact_messages").insert({
-        id: randomUUID(),
-        name: validation.sanitized.name,
-        email: validation.sanitized.email,
-        message: validation.sanitized.message,
-        status: "UNREAD",
-        ip_address: ip,
-        created_at: new Date().toISOString()
-      });
+      const sb = getSupabase();
+      if (sb) {
+        const ip = (req.headers["x-forwarded-for"] as string || "").split(",")[0] || "unknown";
+        await sb.from("contact_messages").insert({
+          id: randomUUID(),
+          name: validation.sanitized.name,
+          email: validation.sanitized.email,
+          message: validation.sanitized.message,
+          status: "UNREAD",
+          ip_address: ip,
+          created_at: new Date().toISOString()
+        });
+      }
     } catch (dbErr) {
       console.error("Failed to persist contact message:", dbErr);
     }
