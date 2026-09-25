@@ -67,8 +67,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") { return res.status(200).end(); }
 
   const url = req.url || "";
-  // Strip /api/admin prefix for route matching
-  const route = url.replace(/^\/api\/admin\/?/, "").split("?")[0];
+  // Vercel catch-all: req.query.path is an array like ["setup"] or ["login"]
+  // Fallback to URL parsing for local dev
+  const pathSegments = req.query?.path;
+  let route = "";
+  if (Array.isArray(pathSegments)) {
+    route = pathSegments.join("/");
+  } else if (typeof pathSegments === "string") {
+    route = pathSegments;
+  } else {
+    route = url.replace(/^\/api\/admin\/?/, "").split("?")[0];
+  }
 
   // ── /api/admin/status ────────────────────────────────────────────────────
   if (route === "status" || route === "") {
