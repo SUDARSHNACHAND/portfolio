@@ -336,39 +336,49 @@ ALTER TABLE resume_metadata ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
 
 -- Public can read ONLY published content
+DROP POLICY IF EXISTS "Public can view published home" ON portfolio_home;
 CREATE POLICY "Public can view published home" ON portfolio_home FOR
 SELECT USING (status = 'published');
 
+DROP POLICY IF EXISTS "Public can view published about" ON portfolio_about;
 CREATE POLICY "Public can view published about" ON portfolio_about FOR
 SELECT USING (status = 'published');
 
+DROP POLICY IF EXISTS "Public can view published education" ON portfolio_education;
 CREATE POLICY "Public can view published education" ON portfolio_education FOR
 SELECT USING (status = 'published');
 
+DROP POLICY IF EXISTS "Public can view published experience" ON portfolio_experience;
 CREATE POLICY "Public can view published experience" ON portfolio_experience FOR
 SELECT USING (status = 'published');
 
+DROP POLICY IF EXISTS "Public can view published skills" ON portfolio_skills;
 CREATE POLICY "Public can view published skills" ON portfolio_skills FOR
 SELECT USING (status = 'published');
 
+DROP POLICY IF EXISTS "Public can view published projects" ON portfolio_projects;
 CREATE POLICY "Public can view published projects" ON portfolio_projects FOR
 SELECT USING (
         status = 'published'
         AND is_deleted = FALSE
     );
 
+DROP POLICY IF EXISTS "Public can view active socials" ON portfolio_socials;
 CREATE POLICY "Public can view active socials" ON portfolio_socials FOR
 SELECT USING (enabled = TRUE);
 
+DROP POLICY IF EXISTS "Public can view active resume" ON resume_metadata;
 CREATE POLICY "Public can view active resume" ON resume_metadata FOR
 SELECT USING (is_active = TRUE);
 
 -- Public can insert anonymous analytics and contact messages
+DROP POLICY IF EXISTS "Public can insert analytics events" ON analytics_events;
 CREATE POLICY "Public can insert analytics events" ON analytics_events FOR
 INSERT
 WITH
     CHECK (TRUE);
 
+DROP POLICY IF EXISTS "Public can submit contact messages" ON contact_messages;
 CREATE POLICY "Public can submit contact messages" ON contact_messages FOR
 INSERT
 WITH
