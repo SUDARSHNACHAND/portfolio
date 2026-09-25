@@ -5,7 +5,8 @@
   "rewrites": [
     { "source": "/api/contact", "destination": "/api/contact" },
     { "source": "/api/analytics/:path*", "destination": "/api/analytics" },
-    { "source": "/((?!api/|.*\\.pdf$|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.svg$|.*\\.webp$|.*\\.ico$|.*\\.woff2?$|.*\\.ttf$|.*\\.mp3$|assets/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*\\.[a-zA-Z0-9]+$)", "destination": "/$1" },
+    { "source": "/((?!api/)(?!.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
@@ -18,7 +19,7 @@
       ]
     },
     {
-      "source": "/(.*\\.pdf$)",
+      "source": "/(.*\\.pdf)",
       "headers": [
         { "key": "Content-Type", "value": "application/pdf" },
         { "key": "Content-Disposition", "value": "attachment" },
