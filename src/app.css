@@ -16,4 +16,13 @@ body {
   display: block;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  background-color: #14110E;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
 }
