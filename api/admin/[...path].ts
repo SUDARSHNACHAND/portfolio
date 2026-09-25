@@ -1,13 +1,24 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createHash, randomUUID } from "node:crypto";
 
-// ── Supabase admin client (service-role, bypasses RLS) ──────────────────────
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-  { auth: { persistSession: false } }
-);
+// ── Supabase admin client (lazy — avoids crash on local dev without env vars) ─
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    if (!url || !key) throw new Error("Supabase env vars not configured");
+    _supabase = createClient(url, key, { auth: { persistSession: false } });
+  }
+  return _supabase;
+}
+// Alias for cleaner usage
+const supabase = new Proxy({} as SupabaseClient, {
+  get(_t, prop) {
+    return (getSupabase() as unknown as Record<string | symbol, unknown>)[prop];
+  }
+});
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function json(res: VercelResponse, status: number, data: unknown) {

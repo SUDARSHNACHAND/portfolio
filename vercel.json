@@ -5,7 +5,7 @@
   "rewrites": [
     { "source": "/api/contact", "destination": "/api/contact" },
     { "source": "/api/analytics/:path*", "destination": "/api/analytics" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|.*\\.pdf$|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.svg$|.*\\.webp$|.*\\.ico$|.*\\.woff2?$|.*\\.ttf$|.*\\.mp3$|assets/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
@@ -15,6 +15,14 @@
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, Cookie" },
         { "key": "Access-Control-Allow-Credentials", "value": "true" }
+      ]
+    },
+    {
+      "source": "/(.*\\.pdf$)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/pdf" },
+        { "key": "Content-Disposition", "value": "attachment" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
       ]
     }
   ]
