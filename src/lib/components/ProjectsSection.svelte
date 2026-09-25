@@ -22,6 +22,44 @@
 
   import { portfolioStore } from '../data/portfolioStore.svelte';
 
+  const toolLogos: Record<string, { icon: string; invertDark?: boolean }> = {
+    git: { icon: gitSvg },
+    github: { icon: githubSvg, invertDark: true },
+    jenkins: { icon: jenkinsWebp },
+    docker: { icon: dockerSvg },
+    'docker hub': { icon: dockerSvg },
+    kubernetes: { icon: kubernetesSvg },
+    k8s: { icon: kubernetesSvg },
+    terraform: { icon: terraformSvg },
+    prometheus: { icon: prometheusWebp },
+    grafana: { icon: grafanaSvg },
+    python: { icon: pythonSvg },
+    'python flask': { icon: pythonSvg },
+    flask: { icon: pythonSvg },
+    cloudflare: { icon: cloudflareSvg },
+    'cloudflare tunnel': { icon: cloudflareSvg },
+    'aws ec2': { icon: ec2Svg },
+    ec2: { icon: ec2Svg },
+    aws: { icon: ec2Svg },
+    linux: { icon: linuxSvg },
+    'ci/cd': { icon: githubActionsSvg },
+    'github actions': { icon: githubActionsSvg }
+  };
+
+  function getToolIcon(tool: { name: string; icon?: string }): string | undefined {
+    if (tool.icon && typeof tool.icon === 'string' && tool.icon.trim().length > 5 && !tool.icon.includes('undefined')) {
+      return tool.icon;
+    }
+    const key = tool.name.toLowerCase().trim();
+    return toolLogos[key]?.icon || undefined;
+  }
+
+  function isToolInvertDark(tool: { name: string; icon?: string; invertDark?: boolean }): boolean {
+    if (typeof tool.invertDark === 'boolean') return tool.invertDark;
+    const key = tool.name.toLowerCase().trim();
+    return toolLogos[key]?.invertDark ?? false;
+  }
+
   type Props = {
     scrollContainer?: HTMLElement | null;
   };
@@ -135,9 +173,16 @@
       <h2 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-[#ffdb58] to-[#ff8c00] mb-4 font-sans">
         Featured Projects
       </h2>
-      <p class="text-gray-300 text-sm sm:text-base leading-relaxed font-sans">
+      <ScrambledText
+        as="p"
+        radius={100}
+        duration={1.2}
+        speed={0.5}
+        scrambleChars=".:"
+        className="text-gray-300 text-sm sm:text-base leading-relaxed font-sans max-w-xl mx-auto cursor-default"
+      >
         Production-grade CI/CD pipelines, container orchestration, and automated cloud deployments.
-      </p>
+      </ScrambledText>
     </div>
 
     <!-- One-by-one Rectangle Cards with Electric Border -->
@@ -174,21 +219,21 @@
                 </div>
               </div>
 
-              <!-- Project Title with ScrambledText interactive effect -->
+              <!-- Project Title with ScrambledText interactive effect (given settings) -->
               <div class="mb-6">
                 <ScrambledText
                   as="h3"
-                  radius={120}
+                  radius={100}
                   duration={1.2}
-                  speed={0.45}
-                  scrambleChars=".:#/_"
+                  speed={0.5}
+                  scrambleChars=".:"
                   className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight leading-snug group-hover:text-[#ffdb58] transition-colors cursor-default"
                 >
                   {project.title}
                 </ScrambledText>
               </div>
 
-              <!-- Project Highlights (Bullet Points with ScrambledText) -->
+              <!-- Project Highlights (Bullet Points with ScrambledText given settings) -->
               <div class="space-y-3.5 sm:space-y-4 mb-8">
                 {#each project.bullets as bullet, bIndex (bIndex)}
                   <div class="flex items-start gap-3 group/bullet">
@@ -198,11 +243,11 @@
                     <div class="text-gray-300 text-sm sm:text-[0.95rem] leading-relaxed flex-1 font-sans">
                       <ScrambledText
                         as="p"
-                        radius={80}
-                        duration={0.9}
+                        radius={100}
+                        duration={1.2}
                         speed={0.5}
                         scrambleChars=".:"
-                        className="!font-sans !text-gray-300 text-sm sm:text-[0.95rem] leading-relaxed cursor-default"
+                        className="text-gray-300 text-sm sm:text-[0.95rem] leading-relaxed font-sans cursor-default"
                       >
                         {bullet}
                       </ScrambledText>
@@ -224,12 +269,17 @@
                     <span
                       class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-mono text-gray-200 bg-black/50 border border-white/10 hover:border-[#ff8c00]/60 hover:text-[#ffdb58] hover:bg-black/70 hover:scale-105 transition-all duration-200 shadow-sm backdrop-blur-sm cursor-default select-none group/tool"
                     >
-                      <img
-                        src={tool.icon}
-                        alt={tool.name}
-                        class="w-4 h-4 object-contain shrink-0 transition-transform duration-200 group-hover/tool:scale-110 {tool.invertDark ? 'brightness-0 invert' : ''}"
-                        loading="lazy"
-                      />
+                      {#if getToolIcon(tool)}
+                        <img
+                          src={getToolIcon(tool)}
+                          alt={tool.name}
+                          class="w-4 h-4 object-contain shrink-0 transition-transform duration-200 group-hover/tool:scale-110 {isToolInvertDark(tool) ? 'brightness-0 invert' : ''}"
+                          loading="lazy"
+                          onerror={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      {/if}
                       <span class="font-medium">{tool.name}</span>
                     </span>
                   {/each}

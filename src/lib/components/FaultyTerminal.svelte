@@ -256,7 +256,7 @@ void main() {
 		tint = '#ffffff',
 		mouseReact = true,
 		mouseStrength = 0.2,
-		dpr = Math.min(globalThis.devicePixelRatio || 1, 2),
+		dpr = Math.min(globalThis.devicePixelRatio || 1, 1.25),
 		pageLoadAnimation = true,
 		brightness = 1,
 		class: className = ''
@@ -336,8 +336,12 @@ void main() {
 		resizeObserver.observe(currentContainer);
 		resize();
 
+		let isVisible = true;
 		const update = (t: number) => {
-			raf = requestAnimationFrame(update);
+			if (!isVisible) {
+				raf = 0;
+				return;
+			}
 			if (!program) return;
 
 			if (pageLoadAnimation && loadAnimationStart === 0) loadAnimationStart = t;
@@ -366,14 +370,24 @@ void main() {
 			}
 
 			renderer.render({ scene: mesh });
+			raf = requestAnimationFrame(update);
 		};
+
+		const io = new IntersectionObserver((entries) => {
+			isVisible = Boolean(entries[0]?.isIntersecting);
+			if (isVisible && !raf) {
+				raf = requestAnimationFrame(update);
+			}
+		}, { threshold: 0.02 });
+		io.observe(currentContainer);
 
 		raf = requestAnimationFrame(update);
 		currentContainer.appendChild(gl.canvas);
 		if (mouseReact) currentContainer.addEventListener('mousemove', handleMouseMove);
 
 		return () => {
-			cancelAnimationFrame(raf);
+			if (raf) cancelAnimationFrame(raf);
+			io.disconnect();
 			resizeObserver.disconnect();
 			if (mouseReact) currentContainer.removeEventListener('mousemove', handleMouseMove);
 			if (gl.canvas.parentElement === currentContainer) currentContainer.removeChild(gl.canvas);

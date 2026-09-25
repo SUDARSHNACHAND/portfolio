@@ -15,7 +15,6 @@ import ec2Svg from "../assets/logos/svg/EC2.svg";
 import linuxSvg from "../assets/logos/svg/linux.svg";
 import githubActionsSvg from "../assets/logos/svg/Github-Actions--Streamline-Svg-Logos.svg";
 import cloudflareSvg from "../assets/logos/svg/cloudflare.svg";
-import { saveContentToSupabase, loadContentFromSupabase } from "../supabaseClient";
 
 export interface ProjectTool {
   name: string;
@@ -53,6 +52,37 @@ export interface AboutData {
   techBadges: string[];
 }
 
+export interface ExperienceRecord {
+  id: string;
+  type: "internship" | "achievement";
+  year: string;
+  number: string;
+  title: string;
+  organization: string;
+  duration?: string;
+  category?: string;
+  project?: string;
+  description?: string;
+  date?: string;
+  certName: string;
+  certFile: string;
+  fileType: "image" | "pdf";
+}
+
+export interface EducationRecord {
+  id: string;
+  degree: string;
+  institution: string;
+  location: string;
+  start_year: string;
+  end_year: string;
+  status_label: string;
+  branch: string;
+  cgpa: string;
+  description: string;
+  display_order: number;
+}
+
 export interface InquiryItem {
   id: string;
   name: string;
@@ -74,9 +104,9 @@ export interface ThemeSettings {
 const STORAGE_KEY = "portfolio_cms_data_v1";
 
 const initialHero: HeroData = {
-  greeting: "Hello, I'm",
-  name: "Sudarshan Chand",
-  role: "DevOps & Cloud Engineer",
+  greeting: "HI, I AM",
+  name: "SUDARSHNA CHAND M S",
+  role: "DevOps Engineer",
   subtitle: "Final-year Computer Science student passionate about building resilient, automated CI/CD pipelines, container orchestration, and cloud infrastructure.",
   availability: "Available for DevOps & SRE Opportunities",
   resumeUrl: "/M.S.SUDARSHNA CHAND CV.pdf",
@@ -154,6 +184,47 @@ const initialProjects: ProjectItem[] = [
   }
 ];
 
+export const toolIconsMap: Record<string, { icon: string; invertDark?: boolean }> = {
+  git: { icon: gitSvg },
+  github: { icon: githubSvg, invertDark: true },
+  jenkins: { icon: jenkinsWebp },
+  docker: { icon: dockerSvg },
+  "docker hub": { icon: dockerSvg },
+  kubernetes: { icon: kubernetesSvg },
+  k8s: { icon: kubernetesSvg },
+  terraform: { icon: terraformSvg },
+  prometheus: { icon: prometheusWebp },
+  grafana: { icon: grafanaSvg },
+  python: { icon: pythonSvg },
+  "python flask": { icon: pythonSvg },
+  flask: { icon: pythonSvg },
+  cloudflare: { icon: cloudflareSvg },
+  "cloudflare tunnel": { icon: cloudflareSvg },
+  "aws ec2": { icon: ec2Svg },
+  ec2: { icon: ec2Svg },
+  aws: { icon: ec2Svg },
+  linux: { icon: linuxSvg },
+  "ci/cd": { icon: githubActionsSvg },
+  "github actions": { icon: githubActionsSvg }
+};
+
+export function enrichProjectTools(projectsList: ProjectItem[]): ProjectItem[] {
+  return projectsList.map((project) => ({
+    ...project,
+    tools: (project.tools || []).map((tool) => {
+      const key = tool.name.toLowerCase().trim();
+      const meta = toolIconsMap[key];
+      return {
+        ...tool,
+        icon: (tool.icon && tool.icon.length > 5 && !tool.icon.includes("undefined"))
+          ? tool.icon
+          : (meta?.icon || gitSvg),
+        invertDark: typeof tool.invertDark === "boolean" ? tool.invertDark : (meta?.invertDark ?? false)
+      };
+    })
+  }));
+}
+
 const initialTheme: ThemeSettings = {
   silkColor: "#FF8A4C",
   silkSpeed: 5,
@@ -174,11 +245,103 @@ const initialInquiries: InquiryItem[] = [
   }
 ];
 
+const defaultExperiences: ExperienceRecord[] = [
+  {
+    id: "exp-1",
+    type: "internship",
+    year: "2024",
+    number: "01",
+    title: "IoT / INTERNET OF THINGS",
+    organization: "Imbed Software · Karaikudi",
+    duration: "01 MAR — 08 MAR 2024",
+    category: "Internet of Things",
+    description: "Internship Training",
+    certName: "IoT / Internet of Things Certification — Imbed Software",
+    certFile: "/certification/2024.jpeg",
+    fileType: "image"
+  },
+  {
+    id: "exp-2",
+    type: "internship",
+    year: "2025",
+    number: "02",
+    title: "ARTIFICIAL INTELLIGENCE",
+    organization: "SD Pro Solutions",
+    duration: "18 JUN — 02 JUL 2025",
+    category: "Artificial Intelligence",
+    description: "Internship Training Program",
+    certName: "Artificial Intelligence Internship Certification — SD Pro Solutions",
+    certFile: "/certification/2025.jpeg",
+    fileType: "image"
+  },
+  {
+    id: "exp-3",
+    type: "internship",
+    year: "2026",
+    number: "03",
+    title: "UI / UX DESIGN",
+    organization: "Approtech R&D Solutions Pvt. Ltd.",
+    duration: "05 JUN — 06 JUL 2026",
+    category: "UI / UX Design",
+    project: "SkyLink — Smart Airport Experience",
+    description: "Internship Program",
+    certName: "UI/UX Design Certification: SkyLink Smart Airport Experience — Approtech R&D",
+    certFile: "/certification/2026.jpeg",
+    fileType: "image"
+  },
+  {
+    id: "exp-4",
+    type: "achievement",
+    year: "2024",
+    number: "02",
+    title: "SECOND PRIZE",
+    organization: "INNOVITA 2K24",
+    category: "Paper Presentation",
+    description: "State Level Symposium",
+    project: "Alagappa Chettiar Government College of Engineering and Technology",
+    date: "12 JUN 2024",
+    certName: "Second Prize in Paper Presentation — INNOVITA 2K24, ACGCET Karaikudi",
+    certFile: "/certification/acgcet-cf.pdf",
+    fileType: "pdf"
+  }
+];
+
+const defaultEducation: EducationRecord[] = [
+  {
+    id: "edu-1",
+    degree: "B.E. Computer Science & Engineering",
+    institution: "Mount Zion College of Engineering and Technology",
+    location: "Pudukkottai",
+    start_year: "2023",
+    end_year: "2027",
+    status_label: "Pursuing",
+    branch: "CSE",
+    cgpa: "7.40 / 10",
+    description: "Focused on Cloud Computing, Operating Systems, Computer Networks, and Distributed Systems.",
+    display_order: 1
+  },
+  {
+    id: "edu-2",
+    degree: "Higher Secondary Certificate (Class XII)",
+    institution: "Maharishi Vidya Mandir Higher Secondary School",
+    location: "Karaikudi",
+    start_year: "2021",
+    end_year: "2023",
+    status_label: "Completed",
+    branch: "Bio-Maths / Science",
+    cgpa: "63.67%",
+    description: "Completed higher secondary education with strong foundations in Mathematics and Physical Sciences.",
+    display_order: 2
+  }
+];
+
 class PortfolioStore {
   hero = $state<HeroData>({ ...initialHero });
   about = $state<AboutData>({ ...initialAbout });
   projects = $state<ProjectItem[]>([...initialProjects]);
   skills = $state<SkillCategory[]>([...defaultSkillCategories]);
+  experience = $state<ExperienceRecord[]>([...defaultExperiences]);
+  education = $state<EducationRecord[]>([...defaultEducation]);
   theme = $state<ThemeSettings>({ ...initialTheme });
   inquiries = $state<InquiryItem[]>([...initialInquiries]);
   isLoaded = $state(false);
@@ -195,19 +358,110 @@ class PortfolioStore {
         const parsed = JSON.parse(saved);
         if (parsed.hero) this.hero = parsed.hero;
         if (parsed.about) this.about = parsed.about;
-        if (parsed.projects) {
-          // Merge tools with default icons if icon missing
-          this.projects = parsed.projects;
+        if (parsed.projects && Array.isArray(parsed.projects)) {
+          this.projects = enrichProjectTools(parsed.projects);
         }
         if (parsed.skills) this.skills = parsed.skills;
+        if (parsed.experience && Array.isArray(parsed.experience)) {
+          this.experience = parsed.experience;
+        }
+        if (parsed.education && Array.isArray(parsed.education)) {
+          this.education = parsed.education;
+        }
         if (parsed.theme) this.theme = { ...initialTheme, ...parsed.theme };
         if (parsed.inquiries) this.inquiries = parsed.inquiries;
       }
     } catch (e) {
-      console.error("Failed to load portfolio CMS state from storage:", e);
+      console.error("Failed to load portfolio state from storage:", e);
     }
     this.isLoaded = true;
-    this.fetchBackendSync();
+    this.syncWithPublishedContent();
+  }
+
+  async syncWithPublishedContent() {
+    if (typeof window === "undefined") return;
+    try {
+      const res = await fetch("/api/content/published");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.home) {
+          this.hero = {
+            ...this.hero,
+            greeting: data.home.hero_label || this.hero.greeting,
+            name: data.home.name || this.hero.name,
+            role: data.home.role || this.hero.role,
+            subtitle: data.home.description || this.hero.subtitle,
+            resumeUrl: data.home.resume_url || this.hero.resumeUrl,
+            resumeFileName: data.home.resume_file_name || this.hero.resumeFileName
+          };
+        }
+        if (data.about) {
+          this.about = {
+            ...this.about,
+            sectionLabel: data.about.section_label || this.about.sectionLabel,
+            headingText: data.about.heading || this.about.headingText,
+            p1Text: data.about.bio_p1 || this.about.p1Text,
+            p2Text: data.about.bio_p2 || this.about.p2Text,
+            p3Text: data.about.bio_p3 || this.about.p3Text,
+            techBadges: Array.isArray(data.about.tech_badges) ? data.about.tech_badges : this.about.techBadges
+          };
+        }
+        if (data.projects && Array.isArray(data.projects) && data.projects.length > 0) {
+          this.projects = enrichProjectTools(
+            data.projects.map((p: Record<string, unknown>) => ({
+              id: String(p.id),
+              number: String(p.project_number || "01"),
+              tag: String(p.tag || ""),
+              title: String(p.title || ""),
+              bullets: Array.isArray(p.bullets) ? p.bullets : [],
+              tools: Array.isArray(p.tools) ? p.tools : [],
+              githubUrl: String(p.github_url || ""),
+              liveUrl: String(p.live_url || "")
+            }))
+          );
+        }
+        if (data.experience && Array.isArray(data.experience) && data.experience.length > 0) {
+          this.experience = data.experience.map((e: Record<string, unknown>, idx: number) => {
+            const certUrl = (e.certificate_url as string) || "";
+            const isPdf = certUrl.toLowerCase().endsWith(".pdf");
+            const duration = e.start_date && e.end_date
+              ? `${e.start_date} — ${e.end_date}`
+              : (e.start_date || e.end_date || (e.year ? String(e.year) : ""));
+            return {
+              id: String(e.id || `exp-${idx}`),
+              type: (e.type === "achievement" ? "achievement" : "internship") as "internship" | "achievement",
+              year: String(e.year || "2024"),
+              number: String(idx + 1).padStart(2, "0"),
+              title: String(e.title || ""),
+              organization: String(e.company || ""),
+              duration: duration,
+              category: String(e.type === "achievement" ? (e.description || "Achievement") : (e.title || "Internship")),
+              description: String(e.description || ""),
+              certName: `${e.title || "Experience"} Certification`,
+              certFile: certUrl,
+              fileType: isPdf ? ("pdf" as const) : ("image" as const)
+            };
+          });
+        }
+        if (data.education && Array.isArray(data.education) && data.education.length > 0) {
+          this.education = data.education.map((edu: Record<string, unknown>) => ({
+            id: String(edu.id),
+            degree: String(edu.degree || ""),
+            institution: String(edu.institution || ""),
+            location: String(edu.location || ""),
+            start_year: String(edu.start_year || ""),
+            end_year: String(edu.end_year || ""),
+            status_label: String(edu.status_label || ""),
+            branch: String(edu.branch || ""),
+            cgpa: String(edu.cgpa || ""),
+            description: String(edu.description || ""),
+            display_order: Number(edu.display_order || 0)
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not sync with published backend content:", e);
+    }
   }
 
   save() {
@@ -218,66 +472,14 @@ class PortfolioStore {
         about: this.about,
         projects: this.projects,
         skills: this.skills,
+        experience: this.experience,
+        education: this.education,
         theme: this.theme,
         inquiries: this.inquiries
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      this.syncToBackend(data);
     } catch (e) {
-      console.error("Failed to save portfolio CMS state to storage:", e);
-    }
-  }
-
-  private async fetchBackendSync() {
-    try {
-      const res = await fetch("/api/admin/content");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.hero) this.hero = { ...this.hero, ...data.hero };
-        if (data.about) this.about = { ...this.about, ...data.about };
-        if (data.projects && Array.isArray(data.projects)) this.projects = data.projects;
-        if (data.skills && Array.isArray(data.skills)) this.skills = data.skills;
-        if (data.theme) this.theme = { ...this.theme, ...data.theme };
-        if (data.inquiries && Array.isArray(data.inquiries)) this.inquiries = data.inquiries;
-        return;
-      }
-    } catch {
-      // Local dev server unavailable
-    }
-
-    try {
-      const cloudData = await loadContentFromSupabase("main");
-      if (cloudData) {
-        if (cloudData.hero) this.hero = { ...this.hero, ...(cloudData.hero as any) };
-        if (cloudData.about) this.about = { ...this.about, ...(cloudData.about as any) };
-        if (cloudData.projects && Array.isArray(cloudData.projects)) this.projects = cloudData.projects as any;
-        if (cloudData.skills && Array.isArray(cloudData.skills)) this.skills = cloudData.skills as any;
-        if (cloudData.theme) this.theme = { ...this.theme, ...(cloudData.theme as any) };
-      }
-    } catch {
-      // Offline fallback
-    }
-  }
-
-  private async syncToBackend(data: any) {
-    try {
-      const token = localStorage.getItem("admin_token");
-      await fetch("/api/admin/content", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : ""
-        },
-        body: JSON.stringify(data)
-      });
-    } catch {
-      // Offline
-    }
-
-    try {
-      await saveContentToSupabase("main", data);
-    } catch {
-      // Supabase unconfigured or offline
+      console.error("Failed to save portfolio state to storage:", e);
     }
   }
 
@@ -313,7 +515,7 @@ class PortfolioStore {
       id: `project-${Date.now()}`,
       number: nextNumber
     };
-    this.projects = [...this.projects, newProject];
+    this.projects = enrichProjectTools([...this.projects, newProject]);
     this.save();
     return newProject;
   }
@@ -325,6 +527,7 @@ class PortfolioStore {
       }
       return p;
     });
+    this.projects = enrichProjectTools(this.projects);
     this.save();
   }
 

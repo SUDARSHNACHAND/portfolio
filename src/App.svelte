@@ -10,8 +10,6 @@
   import DecryptedText from "./lib/components/DecryptedText.svelte";
   import TargetCursor from "./lib/components/TargetCursor.svelte";
   import BorderGlow from "./lib/components/BorderGlow.svelte";
-  import Admin2FAModal from "./lib/components/Admin2FAModal.svelte";
-  import AdminPage from "./lib/components/AdminPage.svelte";
   import Aurora from "./lib/components/Aurora.svelte";
   import { portfolioStore } from "./lib/data/portfolioStore.svelte";
   import TerminalTyping from "./lib/components/TerminalTyping.svelte";
@@ -20,7 +18,6 @@
   import ProjectsSection from "./lib/components/ProjectsSection.svelte";
   import FaultyTerminal from "./lib/components/FaultyTerminal.svelte";
   import DotField from "./lib/components/DotField.svelte";
-  import { saveInquiryToSupabase } from "./lib/supabaseClient";
   import { playNavClickSound } from "./lib/utils/sound";
   import svelteLogo from "./assets/svelte.svg";
   import { skillCategories } from "./lib/data/logos";
@@ -32,6 +29,26 @@
   import Lenis from "lenis";
   import "lenis/dist/lenis.css";
   import spidermanVideo from "./lib/assets/contact/spiderman.mp4";
+
+  // Admin CMS Components
+  import AdminLogin from "./lib/components/admin/AdminLogin.svelte";
+  import AdminLayout from "./lib/components/admin/AdminLayout.svelte";
+  import DashboardView from "./lib/components/admin/DashboardView.svelte";
+  import HomeCMSView from "./lib/components/admin/HomeCMSView.svelte";
+  import AboutCMSView from "./lib/components/admin/AboutCMSView.svelte";
+  import EducationCMSView from "./lib/components/admin/EducationCMSView.svelte";
+  import ExperienceCMSView from "./lib/components/admin/ExperienceCMSView.svelte";
+  import SkillsCMSView from "./lib/components/admin/SkillsCMSView.svelte";
+  import ProjectsCMSView from "./lib/components/admin/ProjectsCMSView.svelte";
+  import ContactCMSView from "./lib/components/admin/ContactCMSView.svelte";
+  import SocialsCMSView from "./lib/components/admin/SocialsCMSView.svelte";
+  import ResumeCMSView from "./lib/components/admin/ResumeCMSView.svelte";
+  import AnalyticsView from "./lib/components/admin/AnalyticsView.svelte";
+  import ContentHealthView from "./lib/components/admin/ContentHealthView.svelte";
+  import UsersView from "./lib/components/admin/UsersView.svelte";
+  import ActivityLogsView from "./lib/components/admin/ActivityLogsView.svelte";
+  import SecurityView from "./lib/components/admin/SecurityView.svelte";
+  import SettingsView from "./lib/components/admin/SettingsView.svelte";
 
   const heroSocialLinks = [
     {
@@ -80,24 +97,77 @@
   ];
 
   let activeHref = $state("#home");
-  let isAdminModalOpen = $state(false);
 
-  // Dynamic Routing for /admin or #admin
   let currentPath = $state(typeof window !== "undefined" ? window.location.pathname : "/");
   let currentHash = $state(typeof window !== "undefined" ? window.location.hash : "");
 
-  let isAdminRoute = $derived(
-    currentPath === "/admin" || 
-    currentPath.startsWith("/admin/") || 
-    currentHash === "#admin"
-  );
+  // Admin CMS routing & authentication state
+  let isAdminRoute = $derived(currentPath.startsWith("/admin"));
+  let adminSection = $state("dashboard");
+  let adminUser = $state<{ id: string; username: string; role: string } | null>(null);
+  let isAdminAuthenticated = $state(false);
 
-  function navigateTo(path: string) {
-    if (typeof window !== "undefined") {
-      history.pushState(null, "", path);
-      currentPath = window.location.pathname;
-      currentHash = window.location.hash;
+  function navigateToAdmin() {
+    playNavClickSound();
+    currentPath = "/admin";
+    history.pushState(null, "", "/admin");
+    evaluateAdminRoute();
+  }
+
+  async function evaluateAdminRoute() {
+    const path = window.location.pathname;
+    if (!path.startsWith("/admin")) return;
+
+    try {
+      const res = await fetch("/api/admin/status");
+      if (res.ok) {
+        const data = await res.json();
+        isAdminAuthenticated = data.authenticated;
+        adminUser = data.user;
+
+        if (!data.authenticated) {
+          if (path !== "/admin/login") {
+            currentPath = "/admin/login";
+            history.replaceState(null, "", "/admin/login");
+          }
+        } else {
+          if (path === "/admin" || path === "/admin/" || path === "/admin/login") {
+            currentPath = "/admin/dashboard";
+            history.replaceState(null, "", "/admin/dashboard");
+            adminSection = "dashboard";
+          } else {
+            const sub = path.replace("/admin/", "").replace("/", "");
+            adminSection = sub || "dashboard";
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check admin status:", e);
     }
+  }
+
+  function handleAdminNavigate(section: string) {
+    adminSection = section;
+    currentPath = `/admin/${section}`;
+    history.pushState(null, "", `/admin/${section}`);
+  }
+
+  async function handleAdminLogout() {
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch (e) {
+      console.error(e);
+    }
+    isAdminAuthenticated = false;
+    adminUser = null;
+    currentPath = "/admin/login";
+    history.replaceState(null, "", "/admin/login");
+  }
+
+  function handleViewPublicSite() {
+    currentPath = "/";
+    history.pushState(null, "", "/");
+    portfolioStore.syncWithPublishedContent();
   }
 
   let heroContainer = $state<HTMLDivElement | null>(null);
@@ -124,7 +194,11 @@
     history.replaceState(null, "", href);
 
     if (lenisInstance) {
-      lenisInstance.scrollTo(target, { duration: 1.2, offset: 0 });
+      lenisInstance.scrollTo(target, {
+        duration: 1.3,
+        offset: 0,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+      });
     } else if (mainScrollWrapper) {
       target.scrollIntoView({ behavior: "smooth" });
     }
@@ -217,12 +291,6 @@
         email: trimmedEmail,
         message: trimmedMessage
       });
-      // Store inquiry in Supabase database:
-      saveInquiryToSupabase({
-        name: trimmedName,
-        email: trimmedEmail,
-        message: trimmedMessage
-      }).catch((e) => console.warn("Supabase background save:", e));
       contactName = "";
       contactEmail = "";
       contactMessage = "";
@@ -235,14 +303,24 @@
   }
 
   $effect(() => {
-    if (mainScrollWrapper && mainScrollContent) {
+    if (isAdminRoute) return;
+    const wrapper = mainScrollWrapper;
+    const content = mainScrollContent;
+    if (wrapper && content) {
       const lenis = new Lenis({
-        wrapper: mainScrollWrapper,
-        content: mainScrollContent,
-        eventsTarget: mainScrollWrapper,
+        wrapper,
+        content,
+        eventsTarget: window,
         smoothWheel: true,
-        lerp: 0.08,
-        syncTouch: true
+        duration: 1.05,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: "vertical",
+        gestureOrientation: "vertical",
+        wheelMultiplier: 1.0,
+        touchMultiplier: 1.2,
+        infinite: false,
+        autoResize: true,
+        syncTouch: false
       });
       lenisInstance = lenis;
 
@@ -250,16 +328,36 @@
         ScrollTrigger.update();
       });
 
-      let frameId: number;
-      const raf = (time: number) => {
-        lenis.raf(time);
-        ScrollTrigger.update();
-        frameId = requestAnimationFrame(raf);
+      const updateTicker = (time: number) => {
+        lenis.raf(time * 1000);
       };
-      frameId = requestAnimationFrame(raf);
+      gsap.ticker.add(updateTicker);
+      gsap.ticker.lagSmoothing(500, 33);
+
+      // Scroller proxy to sync GSAP ScrollTrigger with Lenis scroll wrapper
+      ScrollTrigger.scrollerProxy(wrapper, {
+        scrollTop(value) {
+          if (arguments.length && typeof value === "number") {
+            lenis.scrollTo(value, { immediate: true });
+          }
+          return wrapper.scrollTop;
+        },
+        getBoundingClientRect() {
+          return {
+            top: 0,
+            left: 0,
+            width: window.innerWidth,
+            height: window.innerHeight
+          };
+        },
+        pinType: "transform"
+      });
+
+      ScrollTrigger.addEventListener("refresh", () => lenis.resize());
+      ScrollTrigger.refresh();
 
       return () => {
-        cancelAnimationFrame(frameId);
+        gsap.ticker.remove(updateTicker);
         lenis.destroy();
         lenisInstance = null;
       };
@@ -267,6 +365,22 @@
   });
 
   onMount(() => {
+    if (window.location.pathname.startsWith("/admin")) {
+      evaluateAdminRoute();
+    } else {
+      // Send anonymous telemetry
+      fetch("/api/analytics/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "pageview",
+          path: window.location.pathname || "/",
+          referrer: document.referrer || "",
+          device: /Mobi|Android/i.test(navigator.userAgent) ? "Mobile" : /Tablet|iPad/i.test(navigator.userAgent) ? "Tablet" : "Desktop"
+        })
+      }).catch(() => {});
+    }
+
     // Initial hero items animation
     if (heroContainer) {
       const items = heroContainer.querySelectorAll(".hero-animate-item");
@@ -307,9 +421,14 @@
       if (el) observer.observe(el);
     });
 
-    // Handle initial hash in URL
+    // Handle initial pathname or hash in URL
+    const pathname = window.location.pathname;
     const hash = window.location.hash;
-    if (hash) {
+    if (pathname === "/about" || pathname === "/about/") {
+      setTimeout(() => {
+        scrollToSection("#about");
+      }, 350);
+    } else if (hash) {
       const targetHash = hash === "#work" ? "#skills" : hash;
       setTimeout(() => {
         scrollToSection(targetHash);
@@ -319,7 +438,11 @@
     const onLocationChange = () => {
       currentPath = window.location.pathname;
       currentHash = window.location.hash;
-      if (currentHash && currentHash !== "#admin") {
+      if (currentPath.startsWith("/admin")) {
+        evaluateAdminRoute();
+      } else if (currentPath === "/about" || currentPath === "/about/") {
+        scrollToSection("#about");
+      } else if (currentHash) {
         scrollToSection(currentHash === "#work" ? "#skills" : currentHash);
       }
     };
@@ -334,12 +457,63 @@
   });
 </script>
 
-{#if isAdminRoute}
-  <AdminPage onBack={() => navigateTo("/")} />
-{:else}
   <!-- Global Cursor Target indicator -->
   <TargetCursor targetSelector=".cursor-target" color="#ff8c00" />
 
+{#if isAdminRoute}
+  {#if !isAdminAuthenticated}
+    <AdminLogin 
+      onLoginSuccess={(user) => {
+        isAdminAuthenticated = true;
+        adminUser = user;
+        handleAdminNavigate("dashboard");
+      }}
+      onBackToSite={handleViewPublicSite}
+    />
+  {:else}
+    <AdminLayout
+      currentSection={adminSection}
+      currentUser={adminUser || { id: "1", username: "admin", role: "SUPER_ADMIN" }}
+      onSectionChange={handleAdminNavigate}
+      onLogout={handleAdminLogout}
+      onViewPublicSite={handleViewPublicSite}
+    >
+      {#if adminSection === "dashboard"}
+        <DashboardView onNavigate={handleAdminNavigate} />
+      {:else if adminSection === "home"}
+        <HomeCMSView />
+      {:else if adminSection === "about"}
+        <AboutCMSView />
+      {:else if adminSection === "education"}
+        <EducationCMSView />
+      {:else if adminSection === "experience"}
+        <ExperienceCMSView />
+      {:else if adminSection === "skills"}
+        <SkillsCMSView />
+      {:else if adminSection === "projects"}
+        <ProjectsCMSView />
+      {:else if adminSection === "contact"}
+        <ContactCMSView />
+      {:else if adminSection === "socials"}
+        <SocialsCMSView />
+      {:else if adminSection === "resume"}
+        <ResumeCMSView />
+      {:else if adminSection === "analytics"}
+        <AnalyticsView />
+      {:else if adminSection === "health"}
+        <ContentHealthView />
+      {:else if adminSection === "users"}
+        <UsersView />
+      {:else if adminSection === "activity"}
+        <ActivityLogsView />
+      {:else if adminSection === "security"}
+        <SecurityView />
+      {:else if adminSection === "settings"}
+        <SettingsView />
+      {/if}
+    </AdminLayout>
+  {/if}
+{:else}
   <main class="relative w-full h-screen bg-[#1a130d] overflow-hidden flex flex-col justify-between">
     <!-- NAVIGATION (Pinned Fixed at Top of Viewport) -->
     <div class="fixed top-6 md:top-8 w-full flex justify-center z-50 pointer-events-none">
@@ -353,21 +527,11 @@
           pillColor="transparent"
           pillTextColor="#ffffff"
           hoveredPillTextColor="#ffffff"
-          onLogoClick={() => (isAdminModalOpen = true)}
+          onLogoClick={navigateToAdmin}
           onItemClick={(href, idx, e) => scrollToSection(href, e)}
         />
       </div>
     </div>
-
-    <!-- ADMIN 2FA 6-DIGIT AUTHENTICATION MODAL -->
-    <Admin2FAModal 
-      isOpen={isAdminModalOpen} 
-      onClose={() => (isAdminModalOpen = false)} 
-      onGoToAdminPage={() => {
-        isAdminModalOpen = false;
-        navigateTo("/admin");
-      }}
-    />
 
   <!-- CLICK SPARK WRAPPER AROUND CONTINUOUS SINGLE-PAGE SCROLL -->
   <ClickSpark
@@ -380,7 +544,7 @@
     <!-- CONNECTED CONTINUOUS SCROLL CONTAINER -->
     <div 
       bind:this={mainScrollWrapper}
-      class="relative w-full h-screen overflow-y-auto overflow-x-hidden skills-scrollbar scroll-smooth"
+      class="relative w-full h-screen overflow-y-auto overflow-x-hidden skills-scrollbar overscroll-y-none"
     >
       <div bind:this={mainScrollContent} class="w-full flex flex-col">
 
@@ -389,7 +553,7 @@
         <!-- ============================================== -->
         <section id="home" class="relative min-h-screen w-full flex flex-col justify-center items-center overflow-hidden bg-[#1a130d]">
           <!-- FloatingLines Background -->
-          <div class="absolute inset-0 w-full h-full pointer-events-none z-0">
+          <div class="absolute inset-0 w-full h-full z-0">
             <FloatingLines
               animationSpeed={1}
               linesGradient={["#ffffff", "#ffdb58", "#ff8c00", "#ff4500", "#cc3300"]}
@@ -494,11 +658,14 @@
               <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">
                 <DecryptedText 
                   text="Technical Skills"
-                  speed={35}
-                  maxIterations={8}
-                  sequential={true}
+                  speed={60}
+                  maxIterations={10}
+                  sequential={false}
+                  revealDirection="start"
+                  useOriginalCharsOnly={false}
                   animateOn="all"
                   class="text-transparent bg-clip-text bg-gradient-to-r from-[#ffdb58] to-[#ff8c00] font-extrabold tracking-tight font-sans"
+                  encryptedClass="text-[#ffdb58] font-mono font-bold"
                 />
               </h2>
             </div>
@@ -514,16 +681,19 @@
                   class="p-3 md:p-3.5 border border-white/[0.04] hover:border-white/10 transition-colors backdrop-blur-[2px]"
                 >
                   <div class="flex flex-col gap-2.5">
-                    <!-- Short Decrypted category title -->
+                    <!-- Short Decrypted category title with given settings -->
                     <div class="flex items-center gap-2">
                       <span class="w-1.5 h-1.5 rounded-full bg-[#ff8c00]"></span>
                       <DecryptedText 
                         text={cat.title} 
-                        speed={30}
-                        maxIterations={6}
-                        sequential={true}
-                        animateOn="all"
-                        class="text-xs md:text-sm font-bold tracking-[0.2em] text-gray-300 uppercase"
+                        speed={60}
+                        maxIterations={10}
+                        sequential={false}
+                        revealDirection="start"
+                        useOriginalCharsOnly={false}
+                        animateOn="hover"
+                        class="text-xs md:text-sm font-bold tracking-[0.2em] text-gray-300 uppercase font-sans"
+                        encryptedClass="text-[#ffdb58] font-mono font-bold"
                       />
                     </div>
 
@@ -562,11 +732,11 @@
           <!-- 1. DotField Background -->
           <DotField
             dotRadius={1.5}
-            dotSpacing={14}
-            cursorRadius={500}
+            dotSpacing={22}
+            cursorRadius={450}
             cursorForce={0.1}
             bulgeOnly={true}
-            bulgeStrength={67}
+            bulgeStrength={60}
             glowRadius={160}
             sparkle={false}
             waveAmplitude={0}

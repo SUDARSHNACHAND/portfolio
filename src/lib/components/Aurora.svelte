@@ -133,10 +133,12 @@ void main() {
 
 	onMount(() => {
 		if (!ctn) return;
+		const optimalDpr = Math.min(window.devicePixelRatio || 1, 1.25);
 		const renderer = new Renderer({
 			alpha: true,
 			premultipliedAlpha: true,
-			antialias: true
+			antialias: false,
+			dpr: optimalDpr
 		});
 		const gl = renderer.gl;
 		gl.clearColor(0, 0, 0, 0);
@@ -185,8 +187,12 @@ void main() {
 		resize();
 
 		let raf = 0;
+		let isVisible = true;
 		const update = (t: number) => {
-			raf = requestAnimationFrame(update);
+			if (!isVisible) {
+				raf = 0;
+				return;
+			}
 			const c = current;
 			const tt = c.time ?? t * 0.01;
 			const sp = c.speed ?? 1.0;
@@ -198,11 +204,22 @@ void main() {
 				return [col.r, col.g, col.b];
 			});
 			renderer.render({ scene: mesh });
+			raf = requestAnimationFrame(update);
 		};
+
+		const io = new IntersectionObserver((entries) => {
+			isVisible = Boolean(entries[0]?.isIntersecting);
+			if (isVisible && !raf) {
+				raf = requestAnimationFrame(update);
+			}
+		}, { threshold: 0.02 });
+		io.observe(ctn);
+
 		raf = requestAnimationFrame(update);
 
 		return () => {
-			cancelAnimationFrame(raf);
+			if (raf) cancelAnimationFrame(raf);
+			io.disconnect();
 			window.removeEventListener('resize', resize);
 			ro?.disconnect();
 			if (ctn && gl.canvas.parentNode === ctn) ctn.removeChild(gl.canvas);

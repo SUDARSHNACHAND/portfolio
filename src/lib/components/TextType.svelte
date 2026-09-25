@@ -30,10 +30,10 @@
 	let {
 		text,
 		as: tag = 'div',
-		typingSpeed = 50,
+		typingSpeed = 35,
 		initialDelay = 0,
-		pauseDuration = 2000,
-		deletingSpeed = 30,
+		pauseDuration = 1500,
+		deletingSpeed = 20,
 		loop = true,
 		class: className = '',
 		showCursor = true,
@@ -136,7 +136,7 @@
 					onSentenceComplete?.(textArray[currentTextIndex], currentTextIndex);
 					currentTextIndex = (currentTextIndex + 1) % textArray.length;
 					currentCharIndex = 0;
-					timeout = setTimeout(() => {}, pauseDuration);
+					timeout = setTimeout(tick, 300);
 				} else {
 					timeout = setTimeout(() => {
 						displayedText = displayedText.slice(0, -1);

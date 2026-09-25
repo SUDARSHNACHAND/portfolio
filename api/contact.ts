@@ -40,6 +40,27 @@ export async function handleContactRequest(req: IncomingMessage, res: ServerResp
 
     const result = await sendContactEmail(validation.sanitized);
 
+    // Persist to contact_messages database table
+    try {
+      const { db } = await import("../src/server/db.js");
+      const { logActivity } = await import("../src/server/auth.js");
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const ip = (typeof req.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0] : req.socket.remoteAddress) || "127.0.0.1";
+
+      db.prepare(`
+        INSERT INTO contact_messages (id, name, email, message, status, ip_address, created_at)
+        VALUES (?, ?, ?, ?, 'UNREAD', ?, ?)
+      `).run(id, validation.sanitized.name, validation.sanitized.email, validation.sanitized.message, ip, now);
+
+      logActivity("New Contact Message Received", "contact_messages", null, id, true, {
+        name: validation.sanitized.name,
+        email: validation.sanitized.email
+      });
+    } catch (dbErr) {
+      console.error("Failed to persist message to database:", dbErr);
+    }
+
     if (!result.success) {
       res.statusCode = 500;
       res.end(JSON.stringify({ success: false, error: result.error || "Unable to send message. Please try again." }));

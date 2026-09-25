@@ -66,6 +66,12 @@
 		const ctx = canvas.getContext('2d');
 		if (!ctx) return;
 		let raf = 0;
+
+		const startDraw = () => {
+			if (raf !== 0) return;
+			raf = requestAnimationFrame(draw);
+		};
+
 		const draw = (timestamp: number) => {
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 			for (let i = sparks.length - 1; i >= 0; i--) {
@@ -90,14 +96,19 @@
 				ctx.lineTo(x2, y2);
 				ctx.stroke();
 			}
-			raf = requestAnimationFrame(draw);
+
+			if (sparks.length > 0) {
+				raf = requestAnimationFrame(draw);
+			} else {
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				raf = 0;
+			}
 		};
-		raf = requestAnimationFrame(draw);
 
 		return () => {
 			ro.disconnect();
 			clearTimeout(resizeTimeout);
-			cancelAnimationFrame(raf);
+			if (raf) cancelAnimationFrame(raf);
 		};
 	});
 
@@ -109,6 +120,41 @@
 		const now = performance.now();
 		for (let i = 0; i < sparkCount; i++) {
 			sparks.push({ x, y, angle: (2 * Math.PI * i) / sparkCount, startTime: now });
+		}
+		// Trigger active animation loop
+		const ctx = canvas.getContext('2d');
+		if (ctx && sparks.length > 0) {
+			const draw = (timestamp: number) => {
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				for (let i = sparks.length - 1; i >= 0; i--) {
+					const spark = sparks[i];
+					const elapsed = timestamp - spark.startTime;
+					if (elapsed >= duration) {
+						sparks.splice(i, 1);
+						continue;
+					}
+					const progress = elapsed / duration;
+					const eased = easeFunc(progress);
+					const distance = eased * sparkRadius * extraScale;
+					const lineLength = sparkSize * (1 - eased);
+					const x1 = spark.x + distance * Math.cos(spark.angle);
+					const y1 = spark.y + distance * Math.sin(spark.angle);
+					const x2 = spark.x + (distance + lineLength) * Math.cos(spark.angle);
+					const y2 = spark.y + (distance + lineLength) * Math.sin(spark.angle);
+					ctx.strokeStyle = sparkColor;
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.moveTo(x1, y1);
+					ctx.lineTo(x2, y2);
+					ctx.stroke();
+				}
+				if (sparks.length > 0) {
+					requestAnimationFrame(draw);
+				} else {
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+				}
+			};
+			requestAnimationFrame(draw);
 		}
 	}
 </script>

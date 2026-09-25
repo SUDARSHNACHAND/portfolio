@@ -376,4 +376,4 @@ void main() { vec4 color = vec4(0.0); mainImage(color, gl_FragCoord.xy); gl_Frag
 	});
 </script>
 
-<div bind:this={containerRef} class="relative h-full w-full overflow-hidden" style:mix-blend-mode={mixBlendMode}></div>
+<div bind:this={containerRef} class="relative h-full w-full overflow-hidden pointer-events-auto" style:mix-blend-mode={mixBlendMode}></div>

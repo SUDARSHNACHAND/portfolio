@@ -6,120 +6,177 @@
 
   type Props = {
     text: string;
-    speed?: number;
-    maxIterations?: number;
-    sequential?: boolean;
-    revealDirection?: RevealDirection;
-    useOriginalCharsOnly?: boolean;
+    speed?: number; // 60ms default
+    maxIterations?: number; // 10 default
+    sequential?: boolean; // false default
+    revealDirection?: RevealDirection; // 'start' default
+    useOriginalCharsOnly?: boolean; // false default
     characters?: string;
-    animateOn?: AnimateOn;
+    animateOn?: AnimateOn; // 'hover' default
     class?: string;
+    parentClass?: string;
     encryptedClass?: string;
   };
 
   let {
     text,
-    speed = 40,
-    maxIterations = 8,
-    sequential = true,
+    speed = 60,
+    maxIterations = 10,
+    sequential = false,
     revealDirection = 'start',
     useOriginalCharsOnly = false,
-    characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=<>?',
+    characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()_+',
     animateOn = 'hover',
     class: className = '',
-    encryptedClass = 'text-[#ff8c00]'
+    parentClass = '',
+    encryptedClass = 'text-[#ffdb58]'
   }: Props = $props();
 
   let displayText = $state('');
-  let isHovering = $state(false);
-  let isScrambling = $state(false);
+  let isAnimating = $state(false);
+  let isDecrypted = $state(true);
+  let revealedIndices = $state<Set<number>>(new Set());
   let containerRef = $state<HTMLSpanElement | null>(null);
   let intervalId: number | null = null;
+  let hasAnimatedInView = false;
 
-  $effect(() => {
-    if (!isScrambling) {
-      displayText = text;
+  // Compute available characters based on useOriginalCharsOnly
+  let availableChars = $derived.by(() => {
+    if (useOriginalCharsOnly) {
+      const distinct = Array.from(new Set(text.replace(/\s/g, '')));
+      return distinct.length > 0 ? distinct : ['?'];
     }
+    return characters.split('');
   });
 
-  function getRandomChar(origChar: string): string {
-    if (origChar === ' ') return ' ';
-    if (useOriginalCharsOnly) {
-      const distinctChars = Array.from(new Set(text.replace(/\s/g, '')));
-      if (distinctChars.length > 0) {
-        return distinctChars[Math.floor(Math.random() * distinctChars.length)];
-      }
+  // Calculate reveal order based on direction
+  function computeOrder(len: number, dir: RevealDirection): number[] {
+    const order: number[] = [];
+    if (len <= 0) return order;
+    if (dir === 'start') {
+      for (let i = 0; i < len; i++) order.push(i);
+      return order;
     }
-    return characters[Math.floor(Math.random() * characters.length)];
-  }
-
-  function getRevealOrder(len: number, dir: RevealDirection): number[] {
-    const indices = Array.from({ length: len }, (_, i) => i);
     if (dir === 'end') {
-      return indices.reverse();
+      for (let i = len - 1; i >= 0; i--) order.push(i);
+      return order;
     }
-    if (dir === 'center') {
-      const center = Math.floor(len / 2);
-      return indices.sort((a, b) => Math.abs(a - center) - Math.abs(b - center));
+    // center reveal
+    const middle = Math.floor(len / 2);
+    let offset = 0;
+    while (order.length < len) {
+      if (offset % 2 === 0) {
+        const idx = middle + offset / 2;
+        if (idx >= 0 && idx < len) order.push(idx);
+      } else {
+        const idx = middle - Math.ceil(offset / 2);
+        if (idx >= 0 && idx < len) order.push(idx);
+      }
+      offset++;
     }
-    return indices; // 'start'
+    return order.slice(0, len);
   }
 
-  export function triggerScramble() {
-    if (isScrambling) return;
-    isScrambling = true;
+  function shuffleText(originalText: string, currentRevealed: Set<number>): string {
+    const charsList = availableChars;
+    return originalText
+      .split('')
+      .map((char, i) => {
+        if (char === ' ') return ' ';
+        if (currentRevealed.has(i)) return originalText[i];
+        return charsList[Math.floor(Math.random() * charsList.length)];
+      })
+      .join('');
+  }
+
+  export function triggerDecrypt() {
+    if (isAnimating) return;
+    if (intervalId) clearInterval(intervalId);
 
     const len = text.length;
-    const revealOrder = getRevealOrder(len, revealDirection);
     let currentIteration = 0;
-    let revealedCount = 0;
+    const order = computeOrder(len, revealDirection);
+    const newRevealed = new Set<number>();
 
-    if (intervalId) clearInterval(intervalId);
+    isAnimating = true;
+    isDecrypted = false;
+    revealedIndices = new Set();
 
     intervalId = window.setInterval(() => {
       currentIteration++;
 
       if (sequential) {
-        // Sequentially reveal characters based on revealOrder
-        if (currentIteration % 2 === 0 && revealedCount < len) {
-          revealedCount++;
+        // Sequential mode: reveal characters step-by-step
+        if (newRevealed.size < len) {
+          const nextIndex = order[newRevealed.size];
+          if (nextIndex !== undefined) {
+            newRevealed.add(nextIndex);
+          }
+        }
+        revealedIndices = new Set(newRevealed);
+        displayText = shuffleText(text, newRevealed);
+
+        if (newRevealed.size >= len && currentIteration >= maxIterations) {
+          if (intervalId) clearInterval(intervalId);
+          intervalId = null;
+          isAnimating = false;
+          isDecrypted = true;
+          displayText = text;
         }
       } else {
-        // Resolve all characters together once maxIterations is approached
+        // Non-sequential mode (exact setting from user screenshot):
+        // All non-revealed chars scramble simultaneously every frame
+        displayText = shuffleText(text, newRevealed);
+
+        // Gradually lock in characters as currentIteration approaches maxIterations
+        const progress = currentIteration / maxIterations;
+        const targetRevealedCount = Math.floor(progress * len);
+        while (newRevealed.size < targetRevealedCount && newRevealed.size < len) {
+          const nextIdx = order[newRevealed.size];
+          if (nextIdx !== undefined) newRevealed.add(nextIdx);
+        }
+        revealedIndices = new Set(newRevealed);
+
         if (currentIteration >= maxIterations) {
-          revealedCount = len;
+          if (intervalId) clearInterval(intervalId);
+          intervalId = null;
+          isAnimating = false;
+          isDecrypted = true;
+          displayText = text;
+          revealedIndices = new Set(order);
         }
-      }
-
-      const revealedIndices = new Set(revealOrder.slice(0, revealedCount));
-      const chars = text.split('').map((char, index) => {
-        if (char === ' ') return ' ';
-        if (revealedIndices.has(index) || currentIteration >= maxIterations + len) {
-          return char;
-        }
-        return getRandomChar(char);
-      });
-
-      displayText = chars.join('');
-
-      if (revealedCount >= len && currentIteration >= maxIterations) {
-        if (intervalId) clearInterval(intervalId);
-        displayText = text;
-        isScrambling = false;
       }
     }, speed);
   }
 
+  function resetToPlainText() {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    isAnimating = false;
+    isDecrypted = true;
+    displayText = text;
+    revealedIndices = new Set();
+  }
+
   function handleMouseEnter() {
     if (animateOn === 'hover' || animateOn === 'all') {
-      isHovering = true;
-      triggerScramble();
+      triggerDecrypt();
     }
   }
 
   function handleMouseLeave() {
-    isHovering = false;
+    if (animateOn === 'hover') {
+      resetToPlainText();
+    }
   }
+
+  $effect(() => {
+    if (!isAnimating) {
+      displayText = text;
+    }
+  });
 
   onMount(() => {
     displayText = text;
@@ -128,12 +185,13 @@
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              triggerScramble();
+            if (entry.isIntersecting && !hasAnimatedInView) {
+              hasAnimatedInView = true;
+              triggerDecrypt();
             }
           });
         },
-        { threshold: 0.2 }
+        { threshold: 0.15 }
       );
 
       if (containerRef) {
@@ -157,7 +215,19 @@
   bind:this={containerRef}
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
-  class="inline-block cursor-default select-none {className || 'font-mono'}"
+  class="inline-block cursor-default select-none {parentClass}"
 >
-  {displayText}
+  <span class="sr-only">{text}</span>
+  <span aria-hidden="true" class="inline">
+    {#each displayText.split('') as char, index (index)}
+      {@const isRevealedOrDone = revealedIndices.has(index) || (!isAnimating && isDecrypted)}
+      {#if char === ' '}
+        <span class="inline-block whitespace-pre">&nbsp;</span>
+      {:else}
+        <span class="inline-block transition-colors duration-100 {isRevealedOrDone ? className : encryptedClass}">
+          {char}
+        </span>
+      {/if}
+    {/each}
+  </span>
 </span>

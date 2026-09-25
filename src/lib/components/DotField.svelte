@@ -103,7 +103,12 @@
     const [r1, g1, b1] = parseHex(gradientFrom);
     const [r2, g2, b2] = parseHex(gradientTo);
 
+    let isVisible = true;
     const render = () => {
+      if (!isVisible) {
+        rafId = 0;
+        return;
+      }
       time += 0.016;
 
       // Smooth cursor lerp
@@ -197,10 +202,19 @@
       rafId = requestAnimationFrame(render);
     };
 
+    const io = new IntersectionObserver((entries) => {
+      isVisible = Boolean(entries[0]?.isIntersecting);
+      if (isVisible && !rafId) {
+        rafId = requestAnimationFrame(render);
+      }
+    }, { threshold: 0.02 });
+    if (container) io.observe(container);
+
     rafId = requestAnimationFrame(render);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      if (rafId) cancelAnimationFrame(rafId);
+      io.disconnect();
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseleave", handleMouseLeave);
       ro.disconnect();

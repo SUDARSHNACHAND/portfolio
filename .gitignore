@@ -25,3 +25,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# SQLite database (contains hashed credentials)
+server_data/
+*.db
+*.sqlite
+
+# Temp/scratch files
+crop_favicon.py

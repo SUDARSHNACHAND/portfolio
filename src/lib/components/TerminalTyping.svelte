@@ -16,9 +16,9 @@
       "Managing cloud and containerized systems.",
       "Monitoring applications and infrastructure."
     ],
-    typingSpeed = 50,
-    deletingSpeed = 30,
-    pauseDuration = 2000,
+    typingSpeed = 35,
+    deletingSpeed = 20,
+    pauseDuration = 1500,
     class: className = ""
   }: Props = $props();
 </script>

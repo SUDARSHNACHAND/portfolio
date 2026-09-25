@@ -203,10 +203,15 @@
     let { width, height } = updateSize();
     let lastDpr = Math.min(window.devicePixelRatio || 1, 2);
 
+    let isVisible = true;
     const drawElectricBorder = (currentTime: number) => {
       if (!canvas || !ctx) return;
+      if (!isVisible) {
+        animationFrameId = 0;
+        return;
+      }
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       if (dpr !== lastDpr) {
         lastDpr = dpr;
         const newSize = updateSize();
@@ -236,7 +241,8 @@
       const radius = Math.min(borderRadius, maxRadius);
 
       const approximatePerimeter = 2 * (borderWidth + borderHeight) + 2 * Math.PI * radius;
-      const sampleCount = Math.floor(approximatePerimeter / 2);
+      // Step of 6px provides crisp electric jitter while reducing CPU computations by 67%
+      const sampleCount = Math.max(30, Math.floor(approximatePerimeter / 6));
 
       ctx.beginPath();
 
@@ -283,6 +289,15 @@
       animationFrameId = requestAnimationFrame(drawElectricBorder);
     };
 
+    const io = new IntersectionObserver((entries) => {
+      isVisible = Boolean(entries[0]?.isIntersecting);
+      if (isVisible && !animationFrameId) {
+        lastFrameTime = performance.now();
+        animationFrameId = requestAnimationFrame(drawElectricBorder);
+      }
+    }, { threshold: 0.02 });
+    io.observe(container);
+
     const resizeObserver = new ResizeObserver(() => {
       const newSize = updateSize();
       width = newSize.width;
@@ -296,6 +311,7 @@
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
+      io.disconnect();
       resizeObserver.disconnect();
     };
   });

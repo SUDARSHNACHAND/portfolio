@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { gsap } from 'gsap';
 
   type Props = {
     targetSelector?: string;
@@ -38,7 +37,6 @@
 
     let animationFrameId: number;
     const updateCursor = () => {
-      // Smooth tracking towards mouse position
       posX += (mouseX - posX) * 0.25;
       posY += (mouseY - posY) * 0.25;
 
@@ -46,39 +44,25 @@
         if (currentTarget && document.body.contains(currentTarget)) {
           isHoveringTarget = true;
           const rect = currentTarget.getBoundingClientRect();
-          // Lock onto the exact icon with tight padding
-          gsap.to(cursorRef, {
-            x: rect.left - 4,
-            y: rect.top - 4,
-            width: rect.width + 8,
-            height: rect.height + 8,
-            borderRadius: '8px',
-            opacity: 1,
-            duration: 0.18,
-            ease: 'power2.out',
-            overwrite: 'auto'
-          });
+          cursorRef.style.transform = `translate3d(${rect.left - 4}px, ${rect.top - 4}px, 0)`;
+          cursorRef.style.width = `${rect.width + 8}px`;
+          cursorRef.style.height = `${rect.height + 8}px`;
+          cursorRef.style.borderRadius = '8px';
+          cursorRef.style.opacity = '1';
         } else {
           isHoveringTarget = false;
-          // Free-floating subtle reticle
-          gsap.to(cursorRef, {
-            x: posX - 12,
-            y: posY - 12,
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            opacity: mouseX < 0 ? 0 : 0.35,
-            duration: 0.12,
-            ease: 'none',
-            overwrite: 'auto'
-          });
+          cursorRef.style.transform = `translate3d(${posX - 12}px, ${posY - 12}px, 0)`;
+          cursorRef.style.width = '24px';
+          cursorRef.style.height = '24px';
+          cursorRef.style.borderRadius = '50%';
+          cursorRef.style.opacity = mouseX < 0 ? '0' : '0.35';
         }
       }
 
       animationFrameId = requestAnimationFrame(updateCursor);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
     animationFrameId = requestAnimationFrame(updateCursor);
 
     return () => {
@@ -93,6 +77,8 @@
     bind:this={cursorRef}
     class="pointer-events-none fixed top-0 left-0 z-50 transition-colors border {isHoveringTarget ? 'border-dashed border-[#ff8c00]/80' : 'border-[#ff8c00]/30'} {className}"
     style="
+      transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1), height 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.18s ease-out, opacity 0.18s ease-out;
+      will-change: transform;
       box-shadow: {isHoveringTarget ? '0 0 12px rgba(255, 140, 0, 0.35)' : 'none'};
     "
   >

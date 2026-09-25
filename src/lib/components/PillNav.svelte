@@ -241,7 +241,7 @@
 		<button
 			type="button"
 			class="pill-logo cursor-pointer transition-transform hover:scale-105 active:scale-95"
-			aria-label="Admin Access"
+			aria-label="Home"
 			onmouseenter={handleLogoEnter}
 			onclick={(e) => {
 				playNavClickSound();

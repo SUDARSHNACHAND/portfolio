@@ -42,43 +42,86 @@
 
     if (!rootEl) return;
 
+    // Use SplitText on rootEl with words & chars for bulletproof word wrapping
     const split = SplitText.create(rootEl, {
-      type: "chars",
+      type: "words,chars",
+      wordsClass: "inline-block whitespace-nowrap",
       charsClass: "inline-block will-change-transform",
     });
 
-    split.chars.forEach((el) => {
-      const c = el as HTMLElement;
-      gsap.set(c, { attr: { "data-content": c.innerHTML } });
+    const chars = split.chars as HTMLElement[];
+    chars.forEach((c) => {
+      const content = c.innerHTML;
+      gsap.set(c, { attr: { "data-content": content } });
     });
 
-    const handleMove = (e: PointerEvent) => {
-      split.chars.forEach((el) => {
-        const c = el as HTMLElement;
-        const { left, top, width, height } = c.getBoundingClientRect();
-        const dx = e.clientX - (left + width / 2);
-        const dy = e.clientY - (top + height / 2);
+    let rafId: number | null = null;
+    let pendingEvent: PointerEvent | null = null;
+    let charPositions: { el: HTMLElement; x: number; y: number; content: string }[] = [];
+
+    const updatePositions = () => {
+      charPositions = chars.map((c) => {
+        const rect = c.getBoundingClientRect();
+        return {
+          el: c,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          content: c.dataset.content || "",
+        };
+      });
+    };
+
+    const processMove = () => {
+      if (!pendingEvent) return;
+      const mouseX = pendingEvent.clientX;
+      const mouseY = pendingEvent.clientY;
+
+      for (let i = 0; i < charPositions.length; i++) {
+        const item = charPositions[i];
+        // Never scramble empty spaces or whitespace
+        if (!item.content.trim()) continue;
+
+        const dx = mouseX - item.x;
+        const dy = mouseY - item.y;
         const dist = Math.hypot(dx, dy);
 
         if (dist < radius) {
-          gsap.to(c, {
+          gsap.to(item.el, {
             overwrite: true,
             duration: duration * (1 - dist / radius),
             scrambleText: {
-              text: c.dataset.content || "",
+              text: item.content,
               chars: scrambleChars,
               speed,
             },
             ease: "none",
           });
         }
-      });
+      }
+      rafId = null;
     };
 
-    rootEl.addEventListener("pointermove", handleMove);
+    const handlePointerEnter = () => {
+      updatePositions();
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      pendingEvent = e;
+      if (charPositions.length === 0) {
+        updatePositions();
+      }
+      if (rafId === null) {
+        rafId = requestAnimationFrame(processMove);
+      }
+    };
+
+    rootEl.addEventListener("pointerenter", handlePointerEnter);
+    rootEl.addEventListener("pointermove", handlePointerMove);
 
     return () => {
-      rootEl?.removeEventListener("pointermove", handleMove);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rootEl?.removeEventListener("pointerenter", handlePointerEnter);
+      rootEl?.removeEventListener("pointermove", handlePointerMove);
       split.revert();
     };
   });
@@ -87,7 +130,7 @@
 <svelte:element
   this={tag}
   bind:this={rootEl}
-  class="font-mono text-white {className}"
+  class="{className}"
   {style}
 >
   {#if children}
