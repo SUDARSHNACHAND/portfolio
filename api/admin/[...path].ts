@@ -99,23 +99,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── /api/admin/setup ─────────────────────────────────────────────────────
   if (route === "setup" && req.method === "POST") {
-    const { data: existing } = await supabase.from("admin_users").select("id").limit(1);
-    if (existing && existing.length > 0) {
-      return json(res, 409, { error: "Admin already configured." });
+    try {
+      const { data: existing, error: checkErr } = await supabase.from("admin_users").select("id").limit(1);
+      if (checkErr) return json(res, 500, { error: `DB check failed: ${checkErr.message}` });
+      if (existing && existing.length > 0) {
+        return json(res, 409, { error: "Admin already configured." });
+      }
+      const body = await readBody(req);
+      const { username, passcode } = body as { username?: string; passcode?: string };
+      if (!username || !passcode || String(passcode).length < 8) {
+        return json(res, 400, { error: "Username and passcode (min 8 chars) required." });
+      }
+      const hash = hashPassword(String(passcode));
+      const now = new Date().toISOString();
+      const { error } = await supabase.from("admin_users").insert({
+        id: randomUUID(), username: String(username), password_hash: hash,
+        role: "SUPER_ADMIN", status: "active", created_at: now, updated_at: now
+      });
+      if (error) return json(res, 500, { error: `Failed to create admin: ${error.message} (code: ${error.code})` });
+      return json(res, 201, { success: true });
+    } catch (setupErr: unknown) {
+      const msg = setupErr instanceof Error ? setupErr.message : String(setupErr);
+      return json(res, 500, { error: `Setup exception: ${msg}` });
     }
-    const body = await readBody(req);
-    const { username, passcode } = body as { username?: string; passcode?: string };
-    if (!username || !passcode || String(passcode).length < 8) {
-      return json(res, 400, { error: "Username and passcode (min 8 chars) required." });
-    }
-    const hash = hashPassword(String(passcode));
-    const now = new Date().toISOString();
-    const { error } = await supabase.from("admin_users").insert({
-      id: randomUUID(), username: String(username), password_hash: hash,
-      role: "SUPER_ADMIN", status: "active", created_at: now, updated_at: now
-    });
-    if (error) return json(res, 500, { error: "Failed to create admin user." });
-    return json(res, 201, { success: true });
   }
 
   // ── /api/admin/login ─────────────────────────────────────────────────────
