@@ -98,7 +98,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (route === "status" || route === "") {
     const token = getSessionToken(req);
     const session = await validateSession(token);
-    return json(res, 200, { authenticated: session.valid, user: session.user || null });
+    
+    // Check if any admin exists to determine if we are initialized
+    const { data: existing } = await supabase.from("admin_users").select("id").limit(1);
+    const initialized = existing && existing.length > 0;
+    
+    return json(res, 200, { authenticated: session.valid, user: session.user || null, initialized });
   }
 
   // ── /api/admin/setup ─────────────────────────────────────────────────────
