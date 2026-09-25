@@ -458,6 +458,30 @@ class PortfolioStore {
             display_order: Number(edu.display_order || 0)
           }));
         }
+        if (data.skills && Array.isArray(data.skills) && data.skills.length > 0) {
+          this.skills = data.skills.map((s: Record<string, unknown>) => {
+            const key = String(s.name || "").toLowerCase().trim();
+            const meta = toolIconsMap[key];
+            let iconPath = String(s.icon_path || "");
+            
+            // If the database has a broken seeded path (like /icons/git.svg) or it's empty, use the Vite import
+            if (!iconPath || iconPath.startsWith("/icons/") || iconPath.startsWith("/assets/skills/")) {
+              iconPath = meta?.icon || gitSvg;
+            }
+
+            return {
+              id: String(s.id),
+              category: String(s.category || ""),
+              name: String(s.name || ""),
+              icon_path: iconPath,
+              icon_type: String(s.icon_type || "svg"),
+              proficiency: Number(s.proficiency || 50),
+              description: String(s.description || ""),
+              display_order: Number(s.display_order || 0),
+              status: String(s.status || "published")
+            };
+          });
+        }
       }
     } catch (e) {
       console.warn("Could not sync with published backend content:", e);
