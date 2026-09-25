@@ -102,7 +102,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (route === "setup" && req.method === "POST") {
     try {
       const { data: existing, error: checkErr } = await supabase.from("admin_users").select("id").limit(1);
-      if (checkErr) return json(res, 500, { error: `DB check failed: ${checkErr.message}` });
+      if (checkErr) {
+        // Log the exact URL being used (without the key) so we can see what's wrong with it
+        const urlValue = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "NOT_FOUND";
+        return json(res, 500, { error: `DB check failed: ${checkErr.message}. (URL used: ${urlValue})` });
+      }
       if (existing && existing.length > 0) {
         return json(res, 409, { error: "Admin already configured." });
       }
