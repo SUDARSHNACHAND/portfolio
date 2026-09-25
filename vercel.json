@@ -3,10 +3,8 @@
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [
-    { "source": "/api/contact", "destination": "/api/contact" },
-    { "source": "/api/analytics/:path*", "destination": "/api/analytics" },
-    { "source": "/((?!api/).*\\.[a-zA-Z0-9]+$)", "destination": "/$1" },
-    { "source": "/((?!api/)(?!.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/((?!api/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
@@ -22,7 +20,7 @@
       "source": "/(.*\\.pdf)",
       "headers": [
         { "key": "Content-Type", "value": "application/pdf" },
-        { "key": "Content-Disposition", "value": "attachment" },
+        { "key": "Content-Disposition", "value": "inline" },
         { "key": "Cache-Control", "value": "public, max-age=86400" }
       ]
     }
