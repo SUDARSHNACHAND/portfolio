@@ -182,10 +182,16 @@
     const amplitude = chaos;
     const frequency = 10;
     const baseFlatness = 0;
-    const displacement = 60;
-    const borderOffset = 60;
+    let borderOffset = 60;
+    let displacement = 60;
 
     const updateSize = () => {
+      if (typeof window !== 'undefined') {
+        const isMobile = window.innerWidth < 768;
+        borderOffset = isMobile ? 35 : 60;
+        displacement = isMobile ? 35 : 60;
+      }
+      
       const rect = container.getBoundingClientRect();
       const width = rect.width + borderOffset * 2;
       const height = rect.height + borderOffset * 2;
@@ -211,7 +217,7 @@
         return;
       }
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (dpr !== lastDpr) {
         lastDpr = dpr;
         const newSize = updateSize();
@@ -241,8 +247,9 @@
       const radius = Math.min(borderRadius, maxRadius);
 
       const approximatePerimeter = 2 * (borderWidth + borderHeight) + 2 * Math.PI * radius;
-      // Step of 6px provides crisp electric jitter while reducing CPU computations by 67%
-      const sampleCount = Math.max(30, Math.floor(approximatePerimeter / 6));
+      // Use larger step size on mobile to significantly reduce CPU computations
+      const step = (typeof window !== 'undefined' && window.innerWidth < 768) ? 12 : 6;
+      const sampleCount = Math.max(30, Math.floor(approximatePerimeter / step));
 
       ctx.beginPath();
 
@@ -298,10 +305,20 @@
     }, { threshold: 0.02 });
     io.observe(container);
 
-    const resizeObserver = new ResizeObserver(() => {
-      const newSize = updateSize();
-      width = newSize.width;
-      height = newSize.height;
+    const resizeObserver = new ResizeObserver((entries) => {
+      let widthChanged = false;
+      let heightChanged = false;
+      for (const entry of entries) {
+        if (Math.abs(entry.contentRect.width - width) > 2 || Math.abs(entry.contentRect.height - height) > 2) {
+          widthChanged = true;
+          heightChanged = true;
+        }
+      }
+      if (widthChanged || heightChanged) {
+        const newSize = updateSize();
+        width = newSize.width;
+        height = newSize.height;
+      }
     });
     resizeObserver.observe(container);
 
@@ -327,16 +344,16 @@
   </div>
   <div class="absolute inset-0 rounded-[inherit] pointer-events-none z-0">
     <div
-      class="absolute inset-0 rounded-[inherit] pointer-events-none"
-      style="border: 1px solid {hexToRgba(color, 0.45)}; filter: blur(1px);"
+      class="absolute inset-0 rounded-[inherit] pointer-events-none will-change-[transform,opacity]"
+      style="border: 1px solid {hexToRgba(color, 0.45)}; filter: blur(1px); transform: translateZ(0);"
     ></div>
     <div
-      class="absolute inset-0 rounded-[inherit] pointer-events-none"
-      style="border: 2px solid {color}; filter: blur(4px); opacity: 0.65;"
+      class="absolute inset-0 rounded-[inherit] pointer-events-none will-change-[transform,opacity]"
+      style="border: 2px solid {color}; filter: blur(4px); opacity: 0.65; transform: translateZ(0);"
     ></div>
     <div
-      class="absolute inset-0 rounded-[inherit] pointer-events-none -z-[1] scale-105 opacity-20"
-      style="filter: blur(28px); background: linear-gradient(-30deg, {color}, transparent, {color});"
+      class="absolute inset-0 rounded-[inherit] pointer-events-none -z-[1] scale-105 opacity-20 will-change-[transform,opacity]"
+      style="filter: blur(28px); background: linear-gradient(-30deg, {color}, transparent, {color}); transform: translateZ(0);"
     ></div>
   </div>
   <div class="relative rounded-[inherit] z-[1] h-full">
